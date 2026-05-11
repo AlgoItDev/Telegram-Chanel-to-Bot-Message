@@ -1,53 +1,65 @@
 from pyrogram import filters
-from config import SOURCE_CHANNEL_ID, TARGET_CHANNEL_ID, FILTER_KEYWORDS
+from pyrogram.errors import FloodWait
+from config import SOURCE_CHANNEL_IDS, TARGET_CHANNEL_ID, FILTER_KEYWORDS
 import database
+import asyncio
 
 async def forward_message(client, message):
     try:
-        if message.chat.id != SOURCE_CHANNEL_ID:
+        if message.chat.id not in SOURCE_CHANNEL_IDS:
             return
 
-        print(f"📩 Yeni mesaj: {message.id} - {(message.text or message.caption or '[medya]')[:50]}")
+        print(f"[INFO] Yeni mesaj: {message.id}")
 
-        last_id = database.get_last_message_id()
-        if last_id and message.id <= last_id:
-            print(f"  → Zaten işlendi, atlanıyor")
-            return
+        # Get text from message or caption
+        text = message.text or message.caption or ""
 
+        # Filter keywords - check both text and caption
         if FILTER_KEYWORDS:
-            if not any(k.lower() in (message.text or "").lower() for k in FILTER_KEYWORDS):
+            if not any(k.lower() in text.lower() for k in FILTER_KEYWORDS):
+                print(f"  -> Filtre disi, atlanıyor")
                 return
 
-        text = ""
-        if message.text:
-            text = message.text
-        elif message.caption:
-            text = message.caption
+        # Media group (album) handling
+        if message.media_group_id:
+            print(f"  -> Album mesaji, atlanıyor (album destegi eklenebilir)")
+            return
+
+        # Send message with flood wait handling
+        async def send_with_retry(func, *args, **kwargs):
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    await func(*args, **kwargs)
+                    return True
+                except FloodWait as e:
+                    print(f"  -> FloodWait: {e.value} saniye bekleniyor...")
+                    await asyncio.sleep(e.value)
+                    if attempt == max_retries - 1:
+                        raise
+            return False
 
         if message.photo:
-            await client.send_photo(TARGET_CHANNEL_ID, message.photo.file_id, caption=text)
-            print(f"  → Fotoğraf gönderildi")
+            await send_with_retry(client.send_photo, TARGET_CHANNEL_ID, message.photo.file_id, caption=text)
+            print(f"  -> Fotoğraf gönderildi")
         elif message.video:
-            await client.send_video(TARGET_CHANNEL_ID, message.video.file_id, caption=text)
-            print(f"  → Video gönderildi")
+            await send_with_retry(client.send_video, TARGET_CHANNEL_ID, message.video.file_id, caption=text)
+            print(f"  -> Video gönderildi")
         elif message.document:
-            await client.send_document(TARGET_CHANNEL_ID, message.document.file_id, caption=text)
-            print(f"  → Dosya gönderildi")
+            await send_with_retry(client.send_document, TARGET_CHANNEL_ID, message.document.file_id, caption=text)
+            print(f"  -> Dosya gönderildi")
         elif message.sticker:
-            await client.send_sticker(TARGET_CHANNEL_ID, message.sticker.file_id)
-            print(f"  → Sticker gönderildi")
+            await send_with_retry(client.send_sticker, TARGET_CHANNEL_ID, message.sticker.file_id)
+            print(f"  -> Sticker gönderildi")
         elif message.animation:
-            await client.send_animation(TARGET_CHANNEL_ID, message.animation.file_id, caption=text)
-            print(f"  → Animation gönderildi")
+            await send_with_retry(client.send_animation, TARGET_CHANNEL_ID, message.animation.file_id, caption=text)
+            print(f"  -> Animation gönderildi")
         else:
             if text:
-                await client.send_message(TARGET_CHANNEL_ID, text)
-                print(f"  → Mesaj gönderildi")
+                await send_with_retry(client.send_message, TARGET_CHANNEL_ID, text)
+                print(f"  -> Mesaj gönderildi")
 
-        database.set_last_message_id(message.id)
+        await database.set_last_message_id(message.id)
 
     except Exception as e:
-        print(f"Hata: {e}")
-        # Log to file for debugging
-        with open("debug.log", "a", encoding="utf-8") as f:
-            f.write(f"Hata: {e}\n")
+        print(f"[ERROR] Hata: {e}")

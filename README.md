@@ -1,66 +1,96 @@
-# Telegram Channel Mesaj Aktarıcı
+# ALGO IT Telegram Channel Forwarder
 
-Bir kanaldaki mesajları otomatik olarak başka bir kanala iletir.
+Telegram kanallarından mesajları otomatik olarak hedef kanala ileten bot.
 
 ## Versiyon
 
-**v1.0.0**
+**v1.1.0**
 
-## Özellikler
+## Ozellikler
 
-- Kaynak kanaldan mesajları otomatik olarak hedef kanala iletir
-- Metin, fotoğraf, video, dosya, sticker, GIF desteği
-- Filtreleme (belirli kelimeleri içeren mesajları aktarır)
-- Veritabanı ile son mesaj takibi (yinelenmeleri önler)
-- Polling tabanlı çalışma (私人 kanallar için optimize)
-- 5 saniye periyotlu otomatik kontrol
+- **Coklu Kanal Desteği:** Birden fazla kaynak kanaldan mesajlari aktarabilir
+- **Medya Destegi:** Metin, fotograf, video, dosya, sticker, GIF
+- **Filtreleme:** Belirli kelimeleri iceren mesajlari aktarir (text ve caption)
+- **FloodWait Yonetimi:** Telegram API limit asildiginda otomatik bekler
+- **Async Veritabani:** aiosqlite ile performansli veri islemi
+- **Medya Grubu Destegi:** Album mesajlarini tanir
+- **Logging:** Detayli log ciktisi
 
 ## Kurulum
 
-1. **Bağımlılıkları yükleyin:**
+1. **Bagimliliklari yukleyin:**
 ```bash
 pip install -r requirements.txt
 ```
 
-2. **Ayarları yapılandırın:**
+2. **Ayarlari yapilandirin:**
 ```bash
 copy .env.example .env
 ```
 
-`.env` dosyasını düzenleyin:
-- `API_ID` ve `API_HASH`: [my.telegram.org](https://my.telegram.org) adresinden alın
-- `SOURCE_CHANNEL_ID`: Mesajların geldiği kanal ID (negatif, ör: -1001234567890)
-- `TARGET_CHANNEL_ID`: Mesajların gönderileceği kanal ID
-- `FILTER_KEYWORDS`: Opsiyonel, virgülle ayrılmış filtre kelimeleri
+`.env` dosyasini duzenleyin:
+- `API_ID` ve `API_HASH`: [my.telegram.org](https://my.telegram.org) adresinden alin
+- `SOURCE_CHANNEL_ID`: Kaynak kanal ID'leri (virgulle ayrilmis, opsiyonel)
+- `TARGET_CHANNEL_ID`: Hedef kanal ID
+- `FILTER_KEYWORDS`: Virgulle ayrilmis filtre kelimeleri
 
-3. **Botu başlatın:**
+Ornek:
+```env
+SOURCE_CHANNEL_ID=-1001234567890,-1001234567891
+TARGET_CHANNEL_ID=-1009876543210
+FILTER_KEYWORDS=kazanc,bonus
+```
+
+3. **Botu baslatin:**
 ```bash
 python main.py
 ```
 
-Bot ilk çalıştığında Telegram'dan oturum açma kodu isteyecek.
+## VPS Kurulum (Ubuntu/Debian)
+
+1. Projeyi kopyalayın:
+```bash
+cd /opt
+git clone https://github.com/yourrepo/telegram-forwarder.git
+cd telegram-forwarder
+```
+
+2. Ortami hazirlayin:
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+3. Servisi kurun:
+```bash
+sudo cp telegram-forwarder.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable telegram-forwarder
+sudo systemctl start telegram-forwarder
+```
+
+4. Durumu kontrol edin:
+```bash
+sudo systemctl status telegram-forwarder
+```
 
 ## Komutlar
 
-- `/start` - Botu başlat (DM'de)
-- `/status` - Durumu göster
+- `/start` - Botu baslat (DM'de)
+- `/status` - Durumu goster
 
 ## Notlar
 
-- Hedef kanalda bot **yönetici** olmalı
-- Kaynak kanalda okuma yetkisi yeterli
-- Sürekli çalışması için VPS önerilir
-- Windows'ta çalıştırırken UTF-8 encoding ayarlanmalıdır
+- Hedef kanalda bot **yonetici** olmali
+- Kaynak kanallarda okuma yetkisi yeterli
+- Surekli calismasi icin VPS önerilir
 
 ---
 
-## Changelog
+## Teknik
 
-### v1.0.0 (2025-05-11)
-- İlk sürum
-- Kaynak kanaldan hedef kanala mesaj aktarımı
-- Medya desteği (fotoğraf, video, dosya, sticker, GIF)
-- Filtreleme özelliği
-- SQLite veritabanı ile mesaj takibi
-- Polling tabanlı çalışma (updates sorunu çözüldü)
-- /start ve /status komutları
+- Python 3.10+
+- Pyrogram 2.0+
+- aiosqlite (async veritabani)
+- Polling tabanli (5 saniye periyot)

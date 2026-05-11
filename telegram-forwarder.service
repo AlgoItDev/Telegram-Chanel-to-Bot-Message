@@ -1,0 +1,17 @@
+[Unit]
+Description=ALGO IT Telegram Channel Forwarder
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/telegram-forwarder
+ExecStart=/usr/bin/python3 main.py
+Restart=always
+RestartSec=10
+
+# Environment variables
+Environment=PYTHONIOENCODING=utf-8
+
+[Install]
+WantedBy=multi-user.target
